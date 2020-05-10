@@ -1,0 +1,38 @@
+
+ipscromp, originally written by Brian Naylor, May 25th 1999.
+
+protocol changes and re-write by Cheesy, June 23rd 1999.
+
+A small utility for use with baler's fwcfg setup..  When you find yourself
+on an ip range that's firewalled off, run this and it'll let you in.
+[Brian] decided to go this way instead of using the bot because some people
+expressed security concerns about the old plan.  This should be a lot
+better.  It's not perfect, but it's reasonable, especially considering
+the relatively low risks involved (they get IP access. :)
+
+This code comes in two parts, the daemon and client (the daemon is to be
+run from inetd.)  A typical session goes as follows:
+  - client connects to unblocked <port>, issues: USER <user> <version>
+    (Valid versions are currently 1 and 2)
+  - daemon returns: AUTH <challenge>
+     ...where <challenge> is simply some random alphanumeric text
+  - the client asks the user for his password and constructs the auth
+    string like so:
+         PERMIT hash(<username>:<challenge>:<password>)
+    ...where the hashing algorithm is MD5 for version 1 and SHA for version 2
+  - The daemon calculates the hash for itself and possibly opens the source
+    IP address of the connection. A message indicating success/failure
+    is sent to the client and the connection closed.
+
+Protocol version 2 introduced an additional command 'IPERMIT' that allows
+an alternative IP to be opened. The syntax of IPERMIT is:
+         IPERMIT <ip> hash(<username>:<ip>:<challenge>:<password>)
+
+This forces an attacker to know the user's password.  He can't just feed a
+captured string back because it'll (almost certainly) send a different
+challenge. Remember that the security here depends exclusively on the
+password so do keep those safe and unique since they are stored in
+plaintext on the server.
+
+Suggested fixes:
+ * Get a proper version of snprintf() for Cygnus.

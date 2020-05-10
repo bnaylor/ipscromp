@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# this script is called from /etc/rc.fw
+#
+# it will run 'gatekeeper' to clean up expired IP addressses
+# it will then explicitly open the firewall for those addresses not expired
+#
+# the baler version of ipscromp modified the main firewall script on the fly.  
+# i don't like that.
+#
+
+REPO=/var/spool/ipscromp
+
+IPSCROMP_PORTS="22"
+
+/usr/local/sbin/ipscromp_gatekeeper $1
+
+for i in `ls $REPO`
+do
+	# until we decide on a set of ports to allow, we'll open all ports...
+
+	#/sbin/iptables -A INPUT -p tcp -m multiport --ports $IPSCROMP_PORTS -s $i/32   -j ACCEPT 
+	#/sbin/iptables -A INPUT -p udp -m multiport --ports $IPSCROMP_PORTS -s $i/32   -j ACCEPT 
+	/sbin/iptables -A INPUT -s $i/32 -j ACCEPT
+done

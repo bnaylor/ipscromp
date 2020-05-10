@@ -1,0 +1,47 @@
+
+ * You need one of either libmd or libcrypto, including headers.
+   libcrypto is part of openssl which you probably already have
+   installed. You can download source from http://www.openssl.org,
+
+   If you dont have openssl installed, you probably dont want build
+   it just for this. You can download the much smaller libmd from
+   http://www.penguin.cz/~mhi/libmd/
+
+   Configure the Makefile appropriately. Default is for libcrypto
+
+ * Configure FW_OBJS in the Makefile for whichever you prefer
+   Dont forget to set FW_PROGRAM in the Makefile if you are using
+   fw_program.o
+
+ * make; make install
+
+ * Create your /usr/local/etc/ipscromp_pass file.
+   Each line is in the form username:password
+
+ * Configure your program and/or firewall
+
+   For fw_linux.o you'll need to add 3 chains, scromp-0 thru 2,
+   hooked into your firewall setup wherever you fancy.
+
+   If you are using add_ip and reload_ipf with fw_program.o, you'll
+   need to copy them from scripts/ to somewhere helpful, usually
+   /usr/local/sbin. Be sure and chmod them both 700, owned by root. Check
+   that ETHER_DEV is correct in reload_ipf
+
+   add_ip/reload_ipf use /var/spool/ipscromp, so:
+   mkdir /var/spool/ipscromp; chmod 700 /var/spool/ipscromp
+
+ * Test your firewall setup. fw_test will help if you use fw_linux.o.
+   Be sure and have a backout plan if you are doing this remotely!
+
+ * Add ipscromp to /etc/services, the default is 2002/tcp.
+
+ * Add in.ipscrompd to your inetd. It probably needs to run as root.
+   Reload inetd.
+
+ * Test
+
+ * If required, add an hourly (?) cron job that will cleanup your
+   old ipscromp entries. For fw_linux, use scripts/flush_chains.
+   If you are using add_ip with fw_program.o, use reload_ipf which
+   will handle expiry.

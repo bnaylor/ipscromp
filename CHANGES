@@ -1,0 +1,123 @@
+
+Revision history:
+1.0  27/05/1999  Brian
+     Original version
+
+1.01 04/06/1999, Cheesy
+     Ported client only to Cygwin.
+      - Added #ifdefs for CLIENT
+      - Worked around some missing functions
+     Changed all occurences of client response to 'ALLOW'.
+      - ADD and AUTH were used in some places.
+
+1.1  21/06/1999, Cheesy
+     Changed protocol to be non repeatable.
+      - Detects back-ass clients and prompts them to upgrade.
+      - All 'codes' stuff now removed.
+      - Protocol documentation (ie: comments) updated.
+     Now rejects invalid USER strings the same as invalid PERMIT/AUTH
+     The host may now be specified by IP as well as by hostname.
+     Now uses getservbyname("ipscromp", "tcp").
+      - Can also fallback to DEFAULT_PORT
+     Format of some messages changed slightly for readability.
+     Some code cleanup / tidying (IMO @ any rate)
+     ** This version not tested for Cygwin **
+
+2.0  23/06/1999, Cheesy
+     Complete re-write, using the new protocol.
+      - ipscromp and in.ipscrompd now separate binaries.
+      - Relies heavily on stdargs to make code tidier.
+     Client now checks the IP (range) before sending it.
+     No longer invokes fwcfg via /bin/sh
+     Now supports debugging of in.ipscrompd via syslog
+     ** New client not tested under Cygwin **
+      - In fact, it almost certainly won't work.
+
+2.1  09/07/1999, Cheesy
+     Shuffled code around so that add_ip_range() may be in a separate file.
+     Wrote code to manipulate Linux 2.0 & 2.2 firewalls directly.
+      - Look in fw_linux.c
+      - Previous code may still be used - see fw_program.c
+     Changed some messages to be more generic, since we can't tell
+       exactly how the firewall is being manipulated in in.ipscrompd
+     ** Client still not tested for Cygwin **
+
+2.1a 09/01/2000, Cheesy
+     Fixed up for Cygwin.
+       - Cywin doesnt seem to have inet_aton() so you cannot
+         specify the alternate target host by IP. Sorry folks.
+
+2.2  29/01/2000, Cheesy
+     Protocol changes so that IP is no longer excahnged,
+       only client IP is allowed to be added to the rules.
+      - Challenge string lengthened to keep Ian happy.
+      - Also added protocol field to USER command.
+     Support for rotating ip chains so that IPs can be only open
+       for a certain amount of time.
+      - See fw_linux.c and flush_chains
+     Internal changes so that a struct in_addr is passed around,
+       instead of the IP string. See fw.h
+     All references to 'pin' removed, replaced with password.
+
+2.21 12/05/2000, Cheesy
+     Fixed screwed up logic in fw_linux.c where I used hour % 3
+       when I really wanted hour / 8.
+       (No, I dont know what I was thinking either)
+     Bugfixes for flush_chains:
+      - Logic changed to behave correctly instead of mimicing previously
+        incorrect fw_linux.c behaviour (see above)
+      - date +%H changed to +%k to avoid bash getting confused with 09
+      - arg parsing fixed so it doesnt blow up if invoked with no args
+
+2.3  23/11/2000, Cheesy
+     Protocol updates/improvements
+       - Protocol v2 uses SHA instead of MD5
+       - New IPERMIT command allows other IP addresses to be opened
+       - Now uses md5 & sha implementations from libmd (ie: Non RSA)
+     ipscromp command line switches changed to be ssh compatible
+     Small changes to a few error messages
+
+2.31 11/09/2001, Cheesy
+     Fixed to compile on BSD
+     fw_program.c now compiles (!) plus small error handling improvements
+
+2.4  26/04/2003, Cheesy
+     Imported (with mods) ian's modularisation of authentication
+      - This will make it easier to add alternative auth methods in future
+      - Some associated cleanup and rearranging
+     Switched from libmd to libcrypto
+      - Discovered SHA1 vs. SHA0 the hard way :-/
+      - libmd components no longer bundled
+      - See Makefile and/or INSTALL for more info
+     Username now passed to firewall opening module
+      - This will allow different behavior based on username
+      - fw_program.o now passes this as argv[2] to the called program
+      - open_ip changed to not object to $2 but does nothing with it
+     Fixed an off-by-one in recv_sock (Thanks arcas!)
+      - Probably not exploitable but could cause binary cack to be
+        passed around internally and to syslog()
+      - Also reduced another buffer by one byte, just to keep ian happy
+        (Off-by-one the safe way!)
+     Client changes so 'alternate IP' (-i) can actually be a hostname
+     Added timeout to in.ipscrompd to reduce DoS possibilities
+     Cleanup of a couple of messages
+     Added (fairly loose) installation docs (see INSTALL)
+       and a make install target
+
+2.4.1 11/05/2003, Cheesy
+     Fixed to compile correctly again with libmd (SHA vs SHA1 stuff)
+     Removed old Cygwin specific workarounds that are now unnecessary
+
+2.4.2 07/08/2003, Cheesy
+     Fixed bug in in.ipscrompd.c where the alt_ip in IPERMIT was ignored
+
+2.4.3 24/09/2003, Cheesy
+     ipscromp.c re-written so you can use one password with multiple hosts
+     Added fw_touch.c, FW_OBJ that creates files
+      - Files are named with the IP that was opened, like for open_ip
+      - Each file contains the name of the user the opened that IP
+     Fixed bug in in.ipscrompd.c where sending no data and
+       closing the connection caused a core
+     Fixed bug in the open_ip from 2.4 or newer that simply didn't work
+      - open_ip now writes the username as in fw_touch.c
+     Fixed to compile under solaris/i386
