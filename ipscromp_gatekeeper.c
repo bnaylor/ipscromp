@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 	DIR           *dir  = NULL;
 	struct dirent *dirp = NULL;
 	struct stat    statbuf;
-	char           fqfname[256], uid[256];
+	char           fqfname[300], dynfw[512], uid[256];
 	time_t         oldest;
 	struct timeval tv;
 
@@ -65,6 +65,9 @@ int main(int argc, char **argv)
 			printf("EXPIRING: %s (%s) \n", dirp->d_name, uid);
 			syslog(LOG_NOTICE, "Expiring: %s (%s)\n", dirp->d_name, uid);
 			unlink(fqfname);
+
+			sprintf(dynfw, "/usr/local/sbin/ipscromp_dynfw close %s > /dev/null 2>&1", dirp->d_name);
+			system(dynfw);
 		}
 	}
 

@@ -1,25 +1,76 @@
 #!/bin/bash
 #
-# this script is called from /etc/rc.fw
+# this script is invoked from ipscromp_gatekeeper
+# until we decide on which ports we want to open, just open all of them...
 #
-# it will run 'gatekeeper' to clean up expired IP addressses
-# it will then explicitly open the firewall for those addresses not expired
-#
-# the baler version of ipscromp modified the main firewall script on the fly.  
-# i don't like that.
-#
+# usage:
+#    ipscromp_dynfw [open|close] <IP>
+
 
 REPO=/var/spool/ipscromp
 
-IPSCROMP_PORTS="22"
+SSH_PORT='22'
 
-/usr/local/sbin/ipscromp_gatekeeper $1
 
-for i in `ls $REPO`
-do
-	# until we decide on a set of ports to allow, we'll open all ports...
+usage()
+{
+	cat <<EOF
+usage: ipscromp_dynfw [open|close] <IP addr>
 
-	#/sbin/iptables -A INPUT -p tcp -m multiport --ports $IPSCROMP_PORTS -s $i/32   -j ACCEPT 
-	#/sbin/iptables -A INPUT -p udp -m multiport --ports $IPSCROMP_PORTS -s $i/32   -j ACCEPT 
-	/sbin/iptables -A INPUT -s $i/32 -j ACCEPT
+EOF
+}
+
+
+open_firewall()
+{
+	#echo "open_firewall for $1"
+	EXISTS=$(iptables -C IPSCROMP -s $1 -j ACCEPT 2>&1)
+	[ ! -z "$EXISTS" ] && iptables -I IPSCROMP -s $1 -j ACCEPT
+}
+
+
+close_firewall()
+{
+	#echo "close_firewall for $1"
+	iptables -D IPSCROMP -s $1 -j ACCEPT
+}
+
+
+op=""
+
+while test $# -gt 0; do
+	case "$1" in
+		open)
+			shift
+			op=open
+			ipaddr="$1"
+			;;
+
+		close)
+			shift
+			op=close
+			ipaddr="$1"
+			;;
+	esac
+	shift
 done
+
+if [ -z "$op" ]; then
+	usage
+	exit
+fi
+
+if [ -z "$ipaddr" ]; then
+	usage
+	exit
+fi
+
+
+if [ "$op" = "open" ]; then
+	echo "Opening FW for $ipaddr..."
+	open_firewall $ipaddr
+else
+	echo "Closing FW for $ipaddr..."
+	close_firewall $ipaddr
+fi
+

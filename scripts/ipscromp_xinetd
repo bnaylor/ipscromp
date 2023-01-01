@@ -1,0 +1,14 @@
+service ipscrompd
+{ 
+        port                    = 2002
+        socket_type             = stream
+        protocol                = tcp
+        user                    = root
+        wait                    = no
+        server                  = /usr/local/sbin/in.ipscrompd
+        type                    = UNLISTED
+	flags                   = IPv4
+        log_type                = SYSLOG daemon
+        log_on_success          += HOST
+        log_on_failure          += HOST
+}

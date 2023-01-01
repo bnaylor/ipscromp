@@ -1,0 +1,25 @@
+#!/bin/bash
+IPSCROMP_PORT='2002'
+
+
+# create a chain for ipscromp
+#
+echo "Config IPSCROMP chain..."
+/sbin/iptables -F IPSCROMP 2> /dev/null
+/sbin/iptables -X IPSCROMP 2> /dev/null
+/sbin/iptables -N IPSCROMP 2> /dev/null
+
+for i in $(ls /var/spool/ipscromp); do
+	/usr/local/sbin/ipscromp_dynfw open ${i}
+done
+/sbin/iptables -A IPSCROMP -j RETURN
+
+
+/sbin/iptables -A INPUT -j IPSCROMP
+
+# explicit allowances
+#
+
+# allow incoming ipscromp from anywhere
+/sbin/iptables -A INPUT -p tcp --dport $IPSCROMP_PORT -j ACCEPT
+
