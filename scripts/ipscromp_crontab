@@ -1,0 +1,7 @@
+# the following will periodically revoke ipscromp auths
+#
+
+PATH="/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+
+0-59 * * * * root /usr/local/sbin/ipscromp_gatekeeper 600 > /dev/null 2>&1
+

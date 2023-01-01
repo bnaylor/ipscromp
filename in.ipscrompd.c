@@ -212,8 +212,8 @@ int main(int argc, char *argv[])
   }
   else 
   {
-    syslog(LOG_NOTICE, "User '%s' opened firewall for %s. Limit is %d hrs\n",
-           user, inet_ntoa(authreq.ip_to_add), rc);
+    syslog(LOG_NOTICE, "User '%s' opened firewall for %s.\n",
+           user, inet_ntoa(authreq.ip_to_add));
 
     if (rc == 0)
     {
