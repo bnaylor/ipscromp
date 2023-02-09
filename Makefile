@@ -49,7 +49,7 @@ install: all
 	install -m 755 scripts/ipscromp_dynfw /usr/local/sbin
 
 ipscromp: ipscromp.o common.o
-	$(CC) $(CFLAGS) -v -o ipscromp ipscromp.o common.o $(LDFLAGS) $(LIBS) 
+	$(CC) $(CFLAGS) -o ipscromp ipscromp.o common.o $(LDFLAGS) $(LIBS) 
 
 in.ipscrompd: $(FW_OBJS) in.ipscrompd.o common.o auth_proto_v2.o
 	$(CC) $(CFLAGS) -o in.ipscrompd in.ipscrompd.o common.o \
