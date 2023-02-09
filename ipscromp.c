@@ -299,15 +299,20 @@ int main(int argc, char *argv[])
 	}
 
 	if (!pass) {
-		if (set_echo(0) < 0) {
-			return 3;
+		char *envpass = getenv("IPSCROMP_PASS");
+		if (envpass != NULL) {
+			pass = envpass;
+		} else {
+			if (set_echo(0) < 0) {
+				return 3;
+			}
+
+			pass = ask_user("Your password: ");
+			printf("\n");
+
+			/* Do we really care if this fails? What can we do? */
+			set_echo(1);
 		}
-
-		pass = ask_user("Your password: ");
-		printf("\n");
-
-		/* Do we really care if this fails? What can we do? */
-		set_echo(1);
 	}
 
 	rc = 0;
