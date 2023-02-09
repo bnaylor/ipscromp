@@ -25,6 +25,12 @@ CFLAGS += -DFW_DIRECTORY=\"/var/spool/ipscromp\"
 
 ### Digest code selection ###
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	LDFLAGS += "-L/opt/homebrew/opt/openssl/lib/"
+	CFLAGS += "-I/opt/homebrew/opt/openssl/include/"
+endif
+
 # For libcrpyto/OpenSSL
 LIBS += -lcrypto 
 
@@ -43,11 +49,11 @@ install: all
 	install -m 755 scripts/ipscromp_dynfw /usr/local/sbin
 
 ipscromp: ipscromp.o common.o
-	$(CC) $(CFLAGS) -o ipscromp ipscromp.o common.o $(LIBS) 
+	$(CC) $(CFLAGS) -v -o ipscromp ipscromp.o common.o $(LDFLAGS) $(LIBS) 
 
 in.ipscrompd: $(FW_OBJS) in.ipscrompd.o common.o auth_proto_v2.o
 	$(CC) $(CFLAGS) -o in.ipscrompd in.ipscrompd.o common.o \
-				auth_proto_v2.o $(FW_OBJS) $(LIBS)
+				auth_proto_v2.o $(FW_OBJS) $(LDFLAGS) $(LIBS)
 
 fw_test: $(FW_OBJS) common.o fw_test.o
 	$(CC) $(CFLAGS) -o fw_test $(FW_OBJS) common.o fw_test.o $(LIBS)
