@@ -23,20 +23,33 @@ EOF
 
 open_firewall()
 {
-	#echo "open_firewall for $1"
-	EXISTS=$(iptables -C IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT 2>&1)
-	if [[ ! -z "$EXISTS" ]]; then
-		iptables -I IPSCROMP -s $1 -p tcp --dport 22   -j ACCEPT
-		iptables -I IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
-	fi
+  #echo "open_firewall for $1"
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT > /dev/null 2>&1) || \
+   iptables -I IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT
+
+  # 1022 is emerg ssh during Ubuntu upgrades
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT > /dev/null 2>&1) || \
+   iptables -I IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT
+
+  # 2525 is for docker-proxy (mailias)
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT > /dev/null 2>&1) || \
+   iptables -I IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
 }
 
 
 close_firewall()
 {
 	#echo "close_firewall for $1"
-	iptables -D IPSCROMP -s $1 -p tcp --dport 22   -j ACCEPT
-	iptables -D IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT > /dev/null 2>&1) && \
+   iptables -D IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT
+
+  # 1022 is emerg ssh during Ubuntu upgrades
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT > /dev/null 2>&1) && \
+   iptables -D IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT
+
+  # 2525 is for docker-proxy (mailias)
+  (iptables -C IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT > /dev/null 2>&1) && \
+   iptables -D IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
 }
 
 
