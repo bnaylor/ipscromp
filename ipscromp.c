@@ -20,65 +20,66 @@
 
 char *ip_string(char *data)
 {
-	struct hostent *he;
+	struct sockaddr_storage ss;
+	socklen_t sslen;
 
-	if (inet_aton(data, NULL) == 1) {
-		return data;
-	}
-
-	if ((he = gethostbyname(data)) == NULL) {
+	if (string_to_sockaddr(data, &ss, &sslen) < 0) {
 		return NULL;
 	}
-	return strdup(inet_ntoa(*(struct in_addr *)he->h_addr));
+
+	return sockaddr_to_string(&ss, sslen);
 }
 
 
 int connect_host(char *host, int port)
 {
 	int fd;
-	struct protoent *proto;
-	struct hostent *he;
-	struct sockaddr_in s;
+	struct addrinfo hints, *res, *rp;
+	char port_str[16];
+	int rc;
 
-	memset(&s, 0, sizeof(s));
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;     /* Allow IPv4 or IPv6 */
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_ADDRCONFIG;
 
-	if (inet_aton(host, &s.sin_addr) != 0) {
-		/* Do nothing */
-	}
-	else if ((he = gethostbyname(host)) != NULL) {
-		memcpy(&s.sin_addr, he->h_addr, he->h_length);
-	}
-	else {
-		fprintf(stderr, "Unable to determine address of '%s'\n", host);
+	snprintf(port_str, sizeof(port_str), "%d", port);
+
+	rc = getaddrinfo(host, port_str, &hints, &res);
+	if (rc != 0) {
+		fprintf(stderr, "Unable to determine address of '%s': %s\n",
+				host, gai_strerror(rc));
 		return -1;
 	}
 
-	if ((proto = getprotobyname("tcp")) == NULL) {
-		fprintf(stderr, "getprotobyname(\"tcp\") failed!\n");
-		return -2;
-	}
+	/* Try each address until we successfully connect */
+	for (rp = res; rp != NULL; rp = rp->ai_next) {
+		fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (fd < 0) {
+			continue;
+		}
 
-	if ((fd = socket(PF_INET, SOCK_STREAM, proto->p_proto)) < 0) {
-		perror("socket()");
-		return -3;
-	}
+		if (debug > 1) {
+			struct sockaddr_storage ss;
+			memcpy(&ss, rp->ai_addr, rp->ai_addrlen);
+			char *addr_str = sockaddr_to_string(&ss, rp->ai_addrlen);
+			dbg("connect_host() trying %s:%d\n", addr_str ? addr_str : "unknown", port);
+			free(addr_str);
+		}
 
-	s.sin_family = PF_INET;
-	s.sin_port = htons(port);
+		if (connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+			/* Success */
+			freeaddrinfo(res);
+			return fd;
+		}
 
-	if (debug > 1) {
-		dbg("connect_host() connecting to %s:%d\n",
-				inet_ntoa(s.sin_addr),
-				ntohs(s.sin_port));
-	}
-
-	if (connect(fd, (struct sockaddr *)&s, sizeof(s)) < 0) {
-		perror("connect()");
 		close(fd);
-		return -4;
 	}
 
-	return fd;
+	/* All connection attempts failed */
+	freeaddrinfo(res);
+	perror("connect()");
+	return -4;
 }
 
 
@@ -88,7 +89,7 @@ int find_port(char *host, char *default_service, int default_port)
 	int port = -1;
 	char *preferred = NULL;
 
-	if (host != NULL && (preferred = rindex(host, ':')) != NULL) {
+	if (host != NULL && (preferred = strrchr(host, ':')) != NULL) {
 		*preferred = '\0';
 		preferred++;
 	}
@@ -156,7 +157,7 @@ int connect_ipscrompd(char *host, char *dflt_user, char *password,
 
 	int port, auth_len, fd;
 
-	if ((at_symbol = index(host, '@')) != NULL) {
+	if ((at_symbol = strchr(host, '@')) != NULL) {
 		user = malloc(at_symbol - host + 1);
 		if (user == NULL) {
 			fprintf(stderr, "Unable to malloc() space for user string.\n");

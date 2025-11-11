@@ -39,16 +39,16 @@ char *pass_for(char *user)
 		return NULL; 
 	}
   
-	while(pass == NULL && !feof(passfile)) { 
-		char *colon; 
-		if (fgets(buffer, PASS_BUFFSIZE, passfile) != NULL 
-		   && (colon = index(buffer, ':')) != NULL) { 
-			*colon = '\0'; 
-			if (strcmp(buffer, user) == 0) { 
-				chomp(colon + 1); 
-				pass = strdup(colon + 1); 
-			} 
-		} 
+	while(pass == NULL && !feof(passfile)) {
+		char *colon;
+		if (fgets(buffer, PASS_BUFFSIZE, passfile) != NULL
+		   && (colon = strchr(buffer, ':')) != NULL) {
+			*colon = '\0';
+			if (strcmp(buffer, user) == 0) {
+				chomp(colon + 1);
+				pass = strdup(colon + 1);
+			}
+		}
 	} 
 
 	fclose(passfile); 
@@ -95,13 +95,13 @@ errorcode auth_proto_v2(authrequest *req)
 		return ERROR_CREDENTIALS; 
 	}
   
-	auth_len = strlen(req->user) + strlen(challenge) + strlen(pass) + 3; 
-	if (alt_ip != NULL) { 
-		if (inet_aton(alt_ip, &req->ip_to_add) == 0) { 
-			syslog(LOG_ERR, "Invalid IP specified with IPERMIT, got '%s'", response); 
-			return ERROR_IP_INVALID; 
-		} 
-		auth_len += strlen(alt_ip) + 1; 
+	auth_len = strlen(req->user) + strlen(challenge) + strlen(pass) + 3;
+	if (alt_ip != NULL) {
+		if (string_to_sockaddr(alt_ip, &req->ip_to_add, &req->ip_to_add_len) < 0) {
+			syslog(LOG_ERR, "Invalid IP specified with IPERMIT, got '%s'", response);
+			return ERROR_IP_INVALID;
+		}
+		auth_len += strlen(alt_ip) + 1;
 	}
   
 	if ((auth_str = malloc(auth_len)) == NULL) { 
