@@ -15,7 +15,8 @@
 int main(int argc, char *argv[])
 {
   int rc;
-  struct in_addr addr;
+  struct sockaddr_storage addr;
+  socklen_t addrlen;
 
   if (argc != 3)
   {
@@ -23,11 +24,11 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if (inet_aton(argv[1], &addr) == 0)
+  if (string_to_sockaddr(argv[1], &addr, &addrlen) < 0)
   {
     printf("%s is not a valid IP\n", argv[1]);
   }
-  else if ((rc = fw_add_ip(addr, argv[2])) >= 0)
+  else if ((rc = fw_add_ip(&addr, addrlen, argv[2])) >= 0)
   {
     printf("%s added successfully. Limited to %d hours\n", argv[1], rc);
   }

@@ -7,6 +7,11 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <syslog.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #ifdef USE_MD
 #include <md5.h>
@@ -145,11 +150,11 @@ void chomp(char *string)
 {
 	char *c;
 
-	if ((c = index(string, '\n')) != NULL) {
+	if ((c = strchr(string, '\n')) != NULL) {
 		*c = '\0';
 	}
 
-	if ((c = index(string, '\r')) != NULL) {
+	if ((c = strchr(string, '\r')) != NULL) {
 		*c = '\0';
 	}
 }
@@ -225,7 +230,7 @@ char *hash(int version, char *fmt, ...)
 
 char *progname(char *progpath)
 {
-	char *progname = rindex(progpath, '/');
+	char *progname = strrchr(progpath, '/');
 
 	if (progname == NULL) {
 		progname = progpath;
@@ -235,4 +240,67 @@ char *progname(char *progpath)
 	}
 
 	return progname;
+}
+
+
+/*
+ * Convert a sockaddr_storage to a string representation
+ * Returns a newly allocated string that must be freed by caller
+ */
+char *sockaddr_to_string(struct sockaddr_storage *ss, socklen_t sslen)
+{
+	char buffer[INET6_ADDRSTRLEN];
+	void *addr;
+
+	if (ss->ss_family == AF_INET) {
+		addr = &((struct sockaddr_in *)ss)->sin_addr;
+	}
+	else if (ss->ss_family == AF_INET6) {
+		addr = &((struct sockaddr_in6 *)ss)->sin6_addr;
+	}
+	else {
+		return NULL;
+	}
+
+	if (inet_ntop(ss->ss_family, addr, buffer, sizeof(buffer)) == NULL) {
+		return NULL;
+	}
+
+	return strdup(buffer);
+}
+
+
+/*
+ * Convert a string (hostname or IP) to a sockaddr_storage
+ * Returns 0 on success, -1 on error
+ * Prefers IPv6 if available, falls back to IPv4
+ */
+int string_to_sockaddr(const char *str, struct sockaddr_storage *ss, socklen_t *sslen)
+{
+	struct addrinfo hints, *res, *rp;
+	int rc;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;     /* Allow IPv4 or IPv6 */
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_ADDRCONFIG;  /* Only return addresses we can use */
+
+	rc = getaddrinfo(str, NULL, &hints, &res);
+	if (rc != 0) {
+		dbg("getaddrinfo(%s) failed: %s\n", str, gai_strerror(rc));
+		return -1;
+	}
+
+	/* Try each address until we find one that works */
+	for (rp = res; rp != NULL; rp = rp->ai_next) {
+		if (rp->ai_family == AF_INET || rp->ai_family == AF_INET6) {
+			memcpy(ss, rp->ai_addr, rp->ai_addrlen);
+			*sslen = rp->ai_addrlen;
+			freeaddrinfo(res);
+			return 0;
+		}
+	}
+
+	freeaddrinfo(res);
+	return -1;
 }
