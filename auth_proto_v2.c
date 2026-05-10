@@ -98,7 +98,7 @@ errorcode auth_proto_v2(authrequest *req)
 	auth_len = strlen(req->user) + strlen(challenge) + strlen(pass) + 3;
 	if (alt_ip != NULL) {
 		if (string_to_sockaddr(alt_ip, &req->ip_to_add, &req->ip_to_add_len) < 0) {
-			syslog(LOG_ERR, "Invalid IP specified with IPERMIT, got '%s'", response);
+			syslog(LOG_ERR, "Invalid IP specified with IPERMIT, got '%s'", alt_ip);
 			return ERROR_IP_INVALID;
 		}
 		auth_len += strlen(alt_ip) + 1;

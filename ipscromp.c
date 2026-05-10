@@ -27,7 +27,7 @@ char *ip_string(char *data)
 		return NULL;
 	}
 
-	return sockaddr_to_string(&ss, sslen);
+	return sockaddr_to_string(&ss);
 }
 
 
@@ -62,7 +62,7 @@ int connect_host(char *host, int port)
 		if (debug > 1) {
 			struct sockaddr_storage ss;
 			memcpy(&ss, rp->ai_addr, rp->ai_addrlen);
-			char *addr_str = sockaddr_to_string(&ss, rp->ai_addrlen);
+			char *addr_str = sockaddr_to_string(&ss);
 			dbg("connect_host() trying %s:%d\n", addr_str ? addr_str : "unknown", port);
 			free(addr_str);
 		}
@@ -89,9 +89,16 @@ int find_port(char *host, char *default_service, int default_port)
 	int port = -1;
 	char *preferred = NULL;
 
-	if (host != NULL && (preferred = strrchr(host, ':')) != NULL) {
-		*preferred = '\0';
-		preferred++;
+	if (host != NULL) {
+		char *first_colon = strchr(host, ':');
+		char *last_colon  = strrchr(host, ':');
+		/* Only treat colon as port separator when there is exactly one colon.
+		 * Multiple colons means a bare IPv6 address; no port splitting. */
+		if (first_colon != NULL && first_colon == last_colon) {
+			preferred = last_colon;
+			*preferred = '\0';
+			preferred++;
+		}
 	}
 
 	if (preferred != NULL && (se = getservbyname(preferred, "tcp")) != NULL) {

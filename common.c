@@ -247,7 +247,7 @@ char *progname(char *progpath)
  * Convert a sockaddr_storage to a string representation
  * Returns a newly allocated string that must be freed by caller
  */
-char *sockaddr_to_string(struct sockaddr_storage *ss, socklen_t sslen)
+char *sockaddr_to_string(struct sockaddr_storage *ss)
 {
 	char buffer[INET6_ADDRSTRLEN];
 	void *addr;

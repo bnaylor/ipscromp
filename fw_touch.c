@@ -53,7 +53,7 @@ int fw_add_ip(struct sockaddr_storage *addr, socklen_t addrlen, char *user)
 	char need_fw=0;
 	char *ip_str, *filename_str;
 
-	ip_str = sockaddr_to_string(addr, addrlen);
+	ip_str = sockaddr_to_string(addr);
 	if (ip_str == NULL) {
 		syslog(LOG_ERR, "Unable to convert address to string");
 		return -EINVAL;

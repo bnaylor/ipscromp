@@ -61,14 +61,24 @@ int addable_ip(struct sockaddr_storage *ss)
   else if (ss->ss_family == AF_INET6) {
     sin6 = (struct sockaddr_in6 *)ss;
 
-    /* Check for IPv6 loopback (::1) */
     if (IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr)) {
       return 0;
     }
 
-    /* Check for IPv6 multicast (ff00::/8) */
     if (IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
       return 0;
+    }
+
+    /* IPv4-mapped addresses (::ffff:x.x.x.x) — apply same IPv4 rules.
+     * Needed on dual-stack systems where IPv4 clients appear as AF_INET6. */
+    if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
+      struct in_addr v4addr;
+      unsigned long v4ip;
+      memcpy(&v4addr, &sin6->sin6_addr.s6_addr[12], sizeof(v4addr));
+      v4ip = ntohl(v4addr.s_addr);
+      if (v4ip == INADDR_LOOPBACK || IN_MULTICAST(v4ip)) {
+        return 0;
+      }
     }
   }
   else {
@@ -143,7 +153,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  peer_addr_str = sockaddr_to_string(&sa, sa_size);
+  peer_addr_str = sockaddr_to_string(&sa);
   syslog(LOG_NOTICE, "Connect from %s\n", peer_addr_str ? peer_addr_str : "unknown");
 
   response = recv_sock(STDIN_FILENO);
@@ -218,7 +228,7 @@ int main(int argc, char *argv[])
   /* Check we can add this IP. Refuse to add 127.0.0.1 and some others */
   if (!addable_ip(&authreq.ip_to_add))
   {
-    char *ip_str = sockaddr_to_string(&authreq.ip_to_add, authreq.ip_to_add_len);
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_ERR, "Refusing to add IP '%s' for user '%s'",
                     ip_str ? ip_str : "unknown", user);
     send_sock(STDOUT_FILENO,
@@ -229,7 +239,7 @@ int main(int argc, char *argv[])
 
   if((rc = fw_add_ip(&authreq.ip_to_add, authreq.ip_to_add_len, authreq.user)) < 0)
   {
-    char *ip_str = sockaddr_to_string(&authreq.ip_to_add, authreq.ip_to_add_len);
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_ERR, "User '%s' successfully authed but couldn't amend rules. "
                     "IP was '%s', rc was %d (%s)\n", user,
                     ip_str ? ip_str : "unknown", rc, strerror(-rc));
@@ -238,7 +248,7 @@ int main(int argc, char *argv[])
   }
   else
   {
-    char *ip_str = sockaddr_to_string(&authreq.ip_to_add, authreq.ip_to_add_len);
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_NOTICE, "User '%s' opened firewall for %s.\n",
            user, ip_str ? ip_str : "unknown");
 
