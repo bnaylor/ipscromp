@@ -44,18 +44,48 @@ char *errormsgs[] =
 
 #define ANNOYANCE_PAUSE 10
 
-int addable_ip(struct in_addr addr)
+int addable_ip(struct sockaddr_storage *ss)
 {
-  int rc = 1;
-  unsigned long ip = htonl(addr.s_addr);
+  struct sockaddr_in *sin;
+  struct sockaddr_in6 *sin6;
+  unsigned long ip;
 
-  if (ip == INADDR_LOOPBACK
-      || IN_MULTICAST(ip))
-  {
-    rc = 0;
+  if (ss->ss_family == AF_INET) {
+    sin = (struct sockaddr_in *)ss;
+    ip = ntohl(sin->sin_addr.s_addr);
+
+    if (ip == INADDR_LOOPBACK || IN_MULTICAST(ip)) {
+      return 0;
+    }
+  }
+  else if (ss->ss_family == AF_INET6) {
+    sin6 = (struct sockaddr_in6 *)ss;
+
+    if (IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr)) {
+      return 0;
+    }
+
+    if (IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
+      return 0;
+    }
+
+    /* IPv4-mapped addresses (::ffff:x.x.x.x) — apply same IPv4 rules.
+     * Needed on dual-stack systems where IPv4 clients appear as AF_INET6. */
+    if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
+      struct in_addr v4addr;
+      unsigned long v4ip;
+      memcpy(&v4addr, &sin6->sin6_addr.s6_addr[12], sizeof(v4addr));
+      v4ip = ntohl(v4addr.s_addr);
+      if (v4ip == INADDR_LOOPBACK || IN_MULTICAST(v4ip)) {
+        return 0;
+      }
+    }
+  }
+  else {
+    return 0;  /* Unknown address family */
   }
 
-  return rc;
+  return 1;
 }
 
 void alarm_handler(int junk)
@@ -75,9 +105,9 @@ void usage(char *progpath)
 int main(int argc, char *argv[])
 {
   int opt, rc, proto_version_num, auth_rc;
-  char *command, *response, *user, *proto_version;
+  char *command, *response, *user, *proto_version, *peer_addr_str;
   pid_t pid = getpid();
-  struct sockaddr_in sa;
+  struct sockaddr_storage sa;
   socklen_t sa_size = sizeof(sa);
   authrequest authreq;
 
@@ -123,7 +153,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  syslog(LOG_NOTICE, "Connect from %s\n", inet_ntoa(sa.sin_addr));
+  peer_addr_str = sockaddr_to_string(&sa);
+  syslog(LOG_NOTICE, "Connect from %s\n", peer_addr_str ? peer_addr_str : "unknown");
 
   response = recv_sock(STDIN_FILENO);
 
@@ -159,7 +190,8 @@ int main(int argc, char *argv[])
    */
   authreq.user              = user;
   authreq.proto_version_num = proto_version_num;
-  authreq.ip_to_add         = sa.sin_addr;
+  memcpy(&authreq.ip_to_add, &sa, sa_size);
+  authreq.ip_to_add_len     = sa_size;
 
   switch (proto_version_num)
   {
@@ -194,36 +226,43 @@ int main(int argc, char *argv[])
   }
 
   /* Check we can add this IP. Refuse to add 127.0.0.1 and some others */
-  if (!addable_ip(authreq.ip_to_add))
+  if (!addable_ip(&authreq.ip_to_add))
   {
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_ERR, "Refusing to add IP '%s' for user '%s'",
-                    inet_ntoa(authreq.ip_to_add), user);
+                    ip_str ? ip_str : "unknown", user);
     send_sock(STDOUT_FILENO,
-              errormsgs[ERROR_IP_INVALID], inet_ntoa(authreq.ip_to_add));
+              errormsgs[ERROR_IP_INVALID], ip_str ? ip_str : "unknown");
+    free(ip_str);
     return 1;
   }
 
-  if((rc = fw_add_ip(authreq.ip_to_add, authreq.user)) < 0)
+  if((rc = fw_add_ip(&authreq.ip_to_add, authreq.ip_to_add_len, authreq.user)) < 0)
   {
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_ERR, "User '%s' successfully authed but couldn't amend rules. "
                     "IP was '%s', rc was %d (%s)\n", user,
-                    inet_ntoa(authreq.ip_to_add), rc, strerror(-rc));
+                    ip_str ? ip_str : "unknown", rc, strerror(-rc));
+    free(ip_str);
     send_sock(STDOUT_FILENO, errormsgs[ERROR_AMENDING]);
   }
-  else 
+  else
   {
+    char *ip_str = sockaddr_to_string(&authreq.ip_to_add);
     syslog(LOG_NOTICE, "User '%s' opened firewall for %s.\n",
-           user, inet_ntoa(authreq.ip_to_add));
+           user, ip_str ? ip_str : "unknown");
 
     if (rc == 0)
     {
-      send_sock(STDOUT_FILENO, PERMIT_OK, inet_ntoa(authreq.ip_to_add));
+      send_sock(STDOUT_FILENO, PERMIT_OK, ip_str ? ip_str : "unknown");
     }
     else
     {
-      send_sock(STDOUT_FILENO, PERMIT_OK_TIMED, inet_ntoa(authreq.ip_to_add), rc);
+      send_sock(STDOUT_FILENO, PERMIT_OK_TIMED, ip_str ? ip_str : "unknown", rc);
     }
+    free(ip_str);
   }
 
+  free(peer_addr_str);
   return 0;
 }

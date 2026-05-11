@@ -1,5 +1,6 @@
 
 #include <netinet/in.h>
+#include <sys/socket.h>
 
 typedef enum
 {
@@ -16,7 +17,8 @@ typedef struct
 {
   char *user;
   int  proto_version_num;
-  struct in_addr ip_to_add;
+  struct sockaddr_storage ip_to_add;
+  socklen_t ip_to_add_len;
 } authrequest;
 
 errorcode auth_proto_v2(authrequest *req);
@@ -27,4 +29,4 @@ errorcode auth_proto_v2(authrequest *req);
  *  0 : Firewall updated, no limit.
  * >0 : Firewall updated, limit in hours
  */
-int fw_add_ip(struct in_addr addr, char *user);
+int fw_add_ip(struct sockaddr_storage *addr, socklen_t addrlen, char *user);

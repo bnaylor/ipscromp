@@ -56,10 +56,10 @@ in.ipscrompd: $(FW_OBJS) in.ipscrompd.o common.o auth_proto_v2.o
 				auth_proto_v2.o $(FW_OBJS) $(LDFLAGS) $(LIBS)
 
 fw_test: $(FW_OBJS) common.o fw_test.o
-	$(CC) $(CFLAGS) -o fw_test $(FW_OBJS) common.o fw_test.o $(LIBS)
+	$(CC) $(CFLAGS) -o fw_test $(FW_OBJS) common.o fw_test.o $(LDFLAGS) $(LIBS)
 
 ipscromp_gatekeeper: ipscromp_gatekeeper.o
-	$(CC) $(CFLAGS) -o ipscromp_gatekeeper ipscromp_gatekeeper.c $(LIBS)
+	$(CC) $(CFLAGS) -o ipscromp_gatekeeper ipscromp_gatekeeper.c $(LDFLAGS) $(LIBS)
 
 
 clean:;
