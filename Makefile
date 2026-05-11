@@ -15,7 +15,6 @@ RM = rm -f
 
 ## For the touch a file based system.
 FW_OBJS=fw_touch.o
-CFLAGS += -DFW_DIRECTORY=\"/var/spool/ipscromp\"
 
 ## For the built-in Linux method.
 ## Note that this only works with 2.2 kernels.
@@ -38,15 +37,15 @@ LIBS += -lcrypto
 #LIBS += =-lmd
 #CFLAGS += -DUSE_MD
 
-TARGETS = in.ipscrompd ipscromp fw_test ipscromp_gatekeeper
+TARGETS = in.ipscrompd ipscromp fw_test
 
 all: $(TARGETS)
 
 install: all
 	install -m 755 -s ipscromp /usr/local/bin
 	install -m 755 -s in.ipscrompd /usr/local/sbin
-	install -m 755 -s ipscromp_gatekeeper /usr/local/sbin
 	install -m 755 scripts/ipscromp_dynfw /usr/local/sbin
+	install -m 755 scripts/ipscromp_nft_setup /usr/local/sbin
 
 ipscromp: ipscromp.o common.o
 	$(CC) $(CFLAGS) -o ipscromp ipscromp.o common.o $(LDFLAGS) $(LIBS) 
@@ -58,8 +57,6 @@ in.ipscrompd: $(FW_OBJS) in.ipscrompd.o common.o auth_proto_v2.o
 fw_test: $(FW_OBJS) common.o fw_test.o
 	$(CC) $(CFLAGS) -o fw_test $(FW_OBJS) common.o fw_test.o $(LDFLAGS) $(LIBS)
 
-ipscromp_gatekeeper: ipscromp_gatekeeper.o
-	$(CC) $(CFLAGS) -o ipscromp_gatekeeper ipscromp_gatekeeper.c $(LDFLAGS) $(LIBS)
 
 
 clean:;
