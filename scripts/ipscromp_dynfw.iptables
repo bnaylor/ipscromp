@@ -1,4 +1,6 @@
 #!/bin/bash
+# LEGACY: iptables backend — superseded by ipscromp_dynfw (nftables) in 3.0.
+# Keep for deployments that cannot migrate to nftables.
 #
 # this script is invoked from ipscromp_gatekeeper
 # until we decide on which ports we want to open, just open all of them...
