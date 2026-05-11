@@ -9,6 +9,12 @@
 #include <syslog.h>
 #include <stdlib.h>
 
+/*
+ * RETIRED in 3.0. The gatekeeper expired authenticated IPs by checking
+ * spool file mtimes and calling ipscromp_dynfw close. nftables set element
+ * timeouts now handle expiry natively in the kernel. This file is kept for
+ * reference and for use with the iptables backend (ipscromp_dynfw.iptables).
+ */
 
 #define REPO "/var/spool/ipscromp"
 

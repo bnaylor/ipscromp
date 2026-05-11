@@ -1,7 +1,6 @@
-# the following will periodically revoke ipscromp auths
+# RETIRED in 3.0. ipscromp_gatekeeper is no longer needed when using the
+# nftables backend (ipscromp_dynfw) — authenticated IP expiry is handled
+# natively by nftables set element timeouts.
 #
-
-PATH="/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
-
-0-59 * * * * root /usr/local/sbin/ipscromp_gatekeeper 600 > /dev/null 2>&1
-
+# If using the legacy iptables backend (ipscromp_dynfw.iptables), restore:
+# 0-59 * * * * root /usr/local/sbin/ipscromp_gatekeeper 600 > /dev/null 2>&1

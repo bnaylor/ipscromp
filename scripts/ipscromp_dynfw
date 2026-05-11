@@ -1,104 +1,46 @@
 #!/bin/bash
+# ipscromp_dynfw — nftables backend for ipscromp
+# usage: ipscromp_dynfw [open|close] <IP>
 #
-# this script is invoked from ipscromp_gatekeeper
-# until we decide on which ports we want to open, just open all of them...
-#
-# usage:
-#    ipscromp_dynfw [open|close] <IP>
+# Requires: nft, inet ipscromp table created by ipscromp_nft_setup
+# Timeout is set per-element, defaulting to IPSCROMP_TIMEOUT or 10h.
 
+TABLE="inet ipscromp"
+TIMEOUT=${IPSCROMP_TIMEOUT:-10h}
 
-REPO=/var/spool/ipscromp
-
-SSH_PORT='22'
-
-
-usage()
-{
-	cat <<EOF
-usage: ipscromp_dynfw [open|close] <IP addr>
-
-EOF
+usage() {
+    echo "usage: ipscromp_dynfw [open|close] <IP addr>" >&2
+    exit 1
 }
 
-
-# Select iptables or ip6tables based on address family.
-ipt()
-{
-	if echo "$1" | grep -q ':'; then
-		echo ip6tables
-	else
-		echo iptables
-	fi
+# Returns "allow6" for IPv6 addresses (contain ':'), "allow4" otherwise.
+set_for_ip() {
+    if echo "$1" | grep -q ':'; then
+        echo "allow6"
+    else
+        echo "allow4"
+    fi
 }
 
-
-open_firewall()
-{
-  local ipt=$(ipt "$1")
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT > /dev/null 2>&1) || \
-   $ipt -I IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT
-
-  # 1022 is emerg ssh during Ubuntu upgrades
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT > /dev/null 2>&1) || \
-   $ipt -I IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT
-
-  # 2525 is for docker-proxy (mailias)
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT > /dev/null 2>&1) || \
-   $ipt -I IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
+open_firewall() {
+    local set
+    set=$(set_for_ip "$1")
+    nft add element $TABLE "$set" { "$1" timeout $TIMEOUT }
 }
 
-
-close_firewall()
-{
-  local ipt=$(ipt "$1")
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT > /dev/null 2>&1) && \
-   $ipt -D IPSCROMP -s $1 -p tcp --dport 22 -j ACCEPT
-
-  # 1022 is emerg ssh during Ubuntu upgrades
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT > /dev/null 2>&1) && \
-   $ipt -D IPSCROMP -s $1 -p tcp --dport 1022 -j ACCEPT
-
-  # 2525 is for docker-proxy (mailias)
-  ($ipt -C IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT > /dev/null 2>&1) && \
-   $ipt -D IPSCROMP -s $1 -p tcp --dport 2525 -j ACCEPT
+close_firewall() {
+    local set
+    set=$(set_for_ip "$1")
+    nft delete element $TABLE "$set" { "$1" } 2>/dev/null || true
 }
 
+[ $# -lt 2 ] && usage
 
-op=""
+op="$1"
+ipaddr="$2"
 
-while test $# -gt 0; do
-	case "$1" in
-		open)
-			shift
-			op=open
-			ipaddr="$1"
-			;;
-
-		close)
-			shift
-			op=close
-			ipaddr="$1"
-			;;
-	esac
-	shift
-done
-
-if [ -z "$op" ]; then
-	usage
-	exit
-fi
-
-if [ -z "$ipaddr" ]; then
-	usage
-	exit
-fi
-
-
-if [ "$op" = "open" ]; then
-	echo "Opening FW for $ipaddr..."
-	open_firewall $ipaddr
-else
-	echo "Closing FW for $ipaddr..."
-	close_firewall $ipaddr
-fi
-
+case "$op" in
+    open)  open_firewall  "$ipaddr" ;;
+    close) close_firewall "$ipaddr" ;;
+    *)     usage ;;
+esac

@@ -1,0 +1,45 @@
+#!/bin/bash
+# ipscromp_nft_setup — create the nftables table, sets, and chain for ipscromp.
+#
+# Run once at install time. Re-running is safe: exits without changes if the
+# table already exists (preserving current set contents).
+#
+# To reset everything: nft delete table inet ipscromp && ipscromp_nft_setup
+#
+# Persisting across reboots (pick one for your distro):
+#   nft list ruleset > /etc/nftables.conf    # systemd-based (Debian/Ubuntu/Fedora)
+#   OR include this script in rc.local / a systemd unit before nftables.service
+
+set -e
+
+TIMEOUT=${IPSCROMP_TIMEOUT:-10h}
+PORTS="{ 22, 1022, 2525 }"
+
+if nft list table inet ipscromp > /dev/null 2>&1; then
+    echo "inet ipscromp table already exists — not overwriting." >&2
+    echo "To reset: nft delete table inet ipscromp && $0" >&2
+    exit 0
+fi
+
+nft -f - << EOF
+table inet ipscromp {
+    set allow4 {
+        type ipv4_addr
+        flags timeout
+        timeout $TIMEOUT
+    }
+    set allow6 {
+        type ipv6_addr
+        flags timeout
+        timeout $TIMEOUT
+    }
+    chain input {
+        type filter hook input priority -10; policy accept;
+        ip  saddr @allow4 tcp dport $PORTS accept
+        ip6 saddr @allow6 tcp dport $PORTS accept
+    }
+}
+EOF
+
+echo "ipscromp nftables table created (timeout: $TIMEOUT, ports: $PORTS)."
+echo "Persist with: nft list ruleset > /etc/nftables.conf"

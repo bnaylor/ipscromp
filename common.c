@@ -224,6 +224,7 @@ char *hash(int version, char *fmt, ...)
 
 	*tmp = '\0';
 
+	free(hash);
 	return result;
 }
 

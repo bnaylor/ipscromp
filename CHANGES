@@ -1,5 +1,21 @@
 
 Revision history:
+3.0  2026-05-11, Brian/Claude
+     nftables backend replaces iptables/gatekeeper/spool mechanism.
+      - ipscromp_dynfw rewritten for nftables (nft CLI)
+      - Authenticated IP expiry now handled by nftables set element timeouts
+      - ipscromp_gatekeeper retired; crontab entry no longer needed
+      - /var/spool/ipscromp no longer used
+      - New ipscromp_nft_setup script creates the nftables table on first run
+      - ipscromp_dynfw.iptables kept for legacy deployments
+     IPv6 support throughout (dual-stack client and daemon).
+      - sockaddr_storage replaces in_addr everywhere
+      - getaddrinfo/inet_ntop replace gethostbyname/inet_aton/inet_ntoa
+      - ipscromp_dynfw routes to ip6tables/nftables automatically
+     Python 3 client (ipscromp.py) added.
+     Deprecated BSD string functions (index, rindex) replaced with
+     strchr/strrchr throughout.
+
 1.0  27/05/1999  Brian
      Original version
 
