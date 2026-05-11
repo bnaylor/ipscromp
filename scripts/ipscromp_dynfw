@@ -1,0 +1,46 @@
+#!/bin/bash
+# ipscromp_dynfw — nftables backend for ipscromp
+# usage: ipscromp_dynfw [open|close] <IP>
+#
+# Requires: nft, inet ipscromp table created by ipscromp_nft_setup
+# Timeout is set per-element, defaulting to IPSCROMP_TIMEOUT or 10h.
+
+TABLE="inet ipscromp"
+TIMEOUT=${IPSCROMP_TIMEOUT:-10h}
+
+usage() {
+    echo "usage: ipscromp_dynfw [open|close] <IP addr>" >&2
+    exit 1
+}
+
+# Returns "allow6" for IPv6 addresses (contain ':'), "allow4" otherwise.
+set_for_ip() {
+    if echo "$1" | grep -q ':'; then
+        echo "allow6"
+    else
+        echo "allow4"
+    fi
+}
+
+open_firewall() {
+    local set
+    set=$(set_for_ip "$1")
+    nft add element $TABLE "$set" { "$1" timeout $TIMEOUT }
+}
+
+close_firewall() {
+    local set
+    set=$(set_for_ip "$1")
+    nft delete element $TABLE "$set" { "$1" } 2>/dev/null || true
+}
+
+[ $# -lt 2 ] && usage
+
+op="$1"
+ipaddr="$2"
+
+case "$op" in
+    open)  open_firewall  "$ipaddr" ;;
+    close) close_firewall "$ipaddr" ;;
+    *)     usage ;;
+esac
