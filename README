@@ -42,5 +42,9 @@ A Python 3 client (ipscromp.py) is included for environments where
 building the C client is inconvenient. It supports the same options as
 the C client (-1, -d, -l, -p, -i, user@host:port).
 
+ipscromp requires nftables (nft) on the server. Run ipscromp_nft_setup once
+after install to create the firewall table. For legacy iptables deployments,
+use scripts/ipscromp_dynfw.iptables instead.
+
 Suggested fixes:
  * Get a proper version of snprintf() for Cygnus.
